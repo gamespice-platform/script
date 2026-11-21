@@ -1,4 +1,4 @@
-class_name DotScriptActions
+class_name GSScriptActions
 extends RefCounted
 
 ## The whitelist. A document names an action by id and gives it typed arguments; nothing else runs.
@@ -28,20 +28,20 @@ func _init() -> void:
 
 
 ## Adds a game action. The handler is called as handler(args: Dictionary, ctx: Dictionary).
-func register(id: String, args: Dictionary, cost: int, handler: Callable) -> DotResult:
+func register(id: String, args: Dictionary, cost: int, handler: Callable) -> GSResult:
 	var re := RegEx.new()
 	re.compile(ID_PATTERN)
 	if re.search(id) == null:
-		return DotResult.fail(DotError.CODE_INVALID, "action id '%s' must match %s" % [id, ID_PATTERN])
+		return GSResult.fail(GSError.CODE_INVALID, "action id '%s' must match %s" % [id, ID_PATTERN])
 	if specs.has(id):
-		return DotResult.fail(DotError.CODE_CONFLICT, "action '%s' is already registered" % id)
+		return GSResult.fail(GSError.CODE_CONFLICT, "action '%s' is already registered" % id)
 	if cost < 0 or not handler.is_valid():
-		return DotResult.fail(DotError.CODE_INVALID, "action '%s' needs a cost of 0 or more and a valid handler" % id)
+		return GSResult.fail(GSError.CODE_INVALID, "action '%s' needs a cost of 0 or more and a valid handler" % id)
 	for a: String in args:
 		if not [T_STRING, T_NUMBER, T_BOOL].has(str(args[a])):
-			return DotResult.fail(DotError.CODE_INVALID, "action '%s' argument '%s' has unknown type '%s'" % [id, a, args[a]])
+			return GSResult.fail(GSError.CODE_INVALID, "action '%s' argument '%s' has unknown type '%s'" % [id, a, args[a]])
 	specs[id] = {"args": args.duplicate(), "cost": cost, "handler": handler}
-	return DotResult.success(id)
+	return GSResult.success(id)
 
 
 ## Every action id, sorted; for an editor's palette or a document's reference.
@@ -72,23 +72,23 @@ func cost_of(id: String) -> int:
 
 
 ## Checks one action dictionary ({action: id, ...arguments}) against the table and the config.
-func check(action: Variant, cfg: DotScriptConfig) -> DotResult:
+func check(action: Variant, cfg: GSScriptConfig) -> GSResult:
 	if not action is Dictionary:
-		return DotResult.fail(DotError.CODE_INVALID, "an action must be an object")
+		return GSResult.fail(GSError.CODE_INVALID, "an action must be an object")
 	var d: Dictionary = action
 	var id := str(d.get("action", ""))
 	if not specs.has(id):
-		return DotResult.fail(DotError.CODE_FORBIDDEN, "action '%s' is not whitelisted" % id)
+		return GSResult.fail(GSError.CODE_FORBIDDEN, "action '%s' is not whitelisted" % id)
 	if cfg != null and not cfg.allowed_actions.is_empty() and not cfg.allowed_actions.has(id):
-		return DotResult.fail(DotError.CODE_FORBIDDEN, "action '%s' is not allowed on this server" % id)
+		return GSResult.fail(GSError.CODE_FORBIDDEN, "action '%s' is not allowed on this server" % id)
 	var spec: Dictionary = specs[id]
 	var args: Dictionary = spec["args"]
 	for k: Variant in d:
 		if str(k) != "action" and not args.has(str(k)):
-			return DotResult.fail(DotError.CODE_INVALID, "action '%s' has no argument '%s'" % [id, k])
+			return GSResult.fail(GSError.CODE_INVALID, "action '%s' has no argument '%s'" % [id, k])
 	for a: String in args:
 		if not d.has(a):
-			return DotResult.fail(DotError.CODE_INVALID, "action '%s' is missing argument '%s'" % [id, a])
+			return GSResult.fail(GSError.CODE_INVALID, "action '%s' is missing argument '%s'" % [id, a])
 		var v: Variant = d[a]
 		var ok := false
 		match str(args[a]):
@@ -96,7 +96,7 @@ func check(action: Variant, cfg: DotScriptConfig) -> DotResult:
 			T_NUMBER: ok = (v is float or v is int) and not (v is float and (is_nan(v) or is_inf(v)))
 			T_BOOL: ok = v is bool
 		if not ok:
-			return DotResult.fail(DotError.CODE_INVALID, "action '%s' argument '%s' must be a %s" % [id, a, args[a]])
+			return GSResult.fail(GSError.CODE_INVALID, "action '%s' argument '%s' must be a %s" % [id, a, args[a]])
 		if v is String and cfg != null and cfg.max_text_length > 0 and (v as String).length() > cfg.max_text_length:
-			return DotResult.fail(DotError.CODE_INVALID, "action '%s' argument '%s' is longer than %d characters" % [id, a, cfg.max_text_length])
-	return DotResult.success(d)
+			return GSResult.fail(GSError.CODE_INVALID, "action '%s' argument '%s' is longer than %d characters" % [id, a, cfg.max_text_length])
+	return GSResult.success(d)

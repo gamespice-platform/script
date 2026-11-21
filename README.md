@@ -12,8 +12,8 @@ A community server wants its players to script a map or a mode without handing t
 ## Quick start
 
 ```gdscript
-var run := DotScriptRunner.new()
-run.config = cfg                                   # a DotScriptConfig
+var run := GSScriptRunner.new()
+run.config = cfg                                   # a GSScriptConfig
 run.actions.register("open_door", {"door": "string"}, 2,
         func(a: Dictionary, ctx: Dictionary) -> void: world.open(a["door"]))   # the game's own whitelist
 run.message.connect(func(text: String, rule: String) -> void: hud.say(text))
@@ -37,13 +37,13 @@ run.tick()                                         # in _physics_process: runs w
 - **Cooldowns and once.** `cooldown` (seconds, counted down by `advance(dt)`) and `once` keep a rule quiet.
 - **Actions.** `message`, `set_var`, `add_var`, `toggle_var`, `enable_rule`, `disable_rule`, `emit`, plus whatever the game registers.
 - **Saves.** `snapshot()` and `restore()` carry variables, which rules are on and running cooldowns.
-- **Text.** `load_text()` parses JSON with a size limit; `DotScriptCodec.stringify()` writes it back. Text that looks like code is only ever text.
+- **Text.** `load_text()` parses JSON with a size limit; `GSScriptCodec.stringify()` writes it back. Text that looks like code is only ever text.
 
 See [docs/format.md](docs/format.md) for the full format and `examples/script_demo.gd` for a runnable walk-through.
 
 ## Settings
 
-Every number is a field on `DotScriptConfig`. The values below are defaults, and the ranges are inspector slider limits, not enforced caps. Set the property from code or a config file to go beyond them; 0 means unlimited where it says so.
+Every number is a field on `GSScriptConfig`. The values below are defaults, and the ranges are inspector slider limits, not enforced caps. Set the property from code or a config file to go beyond them; 0 means unlimited where it says so.
 
 | Setting | Default | What it does |
 | --- | --- | --- |
@@ -57,13 +57,13 @@ Every number is a field on `DotScriptConfig`. The values below are defaults, and
 | `max_vars` | 4096 | Most variables a script may create; past it the action is refused. 0 is unlimited. |
 | `allowed_actions` | empty | If set, only these action ids may be used; empty allows every registered action. |
 
-Layers, weakest first: the defaults, `cfg/addon/dot_script/*.yml`, the game's files, the operator's files, `DOT_SCRIPT_*` environment variables, then `--script-*` flags. A game that wants cvars binds the config with GameSpice Game's `DotGameConfigBinder` (`profile_kind = "script"`).
+Layers, weakest first: the defaults, `cfg/addon/dot_script/*.yml`, the game's files, the operator's files, `DOT_SCRIPT_*` environment variables, then `--script-*` flags. A game that wants cvars binds the config with GameSpice Game's `GSGameConfigBinder` (`profile_kind = "script"`).
 
 ## What it is not
 
 **Not a general scripting language.** There is no expression evaluator, no `eval`, no loops and no way to name a method. A document that needs more is a sign the game should register a new action.
 
-**Not the converter's script replay.** GameSpice Map keeps the Source `lua_run` calls a converted map carries and replays a few known ones through its own whitelist (`DotMapScript`). This addon is a document format a server's community writes.
+**Not the converter's script replay.** GameSpice Map keeps the Source `lua_run` calls a converted map carries and replays a few known ones through its own whitelist (`GSMapScript`). This addon is a document format a server's community writes.
 
 **Not map entity I/O.** Relays, counters, timers and triggers wired by name belong to GameSpice Logic (generic) and GameSpice Map (Source entities).
 

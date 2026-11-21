@@ -1,4 +1,4 @@
-class_name DotScriptConditions
+class_name GSScriptConditions
 extends RefCounted
 
 ## Evaluates a rule's `when` list. Every condition is {var, op, value}; all must hold. A name starting with

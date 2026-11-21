@@ -1,4 +1,4 @@
-class_name DotScriptRunner
+class_name GSScriptRunner
 extends RefCounted
 
 ## Runs a validated document. Events go in with [method fire], [method tick] runs what the budget allows,
@@ -14,8 +14,8 @@ signal refused(event: String, reason: String)
 ## A rule ran; for logging or a debug overlay.
 signal rule_ran(rule_id: String, event: String)
 
-var config: DotScriptConfig = DotScriptConfig.new()
-var actions: DotScriptActions = DotScriptActions.new()
+var config: GSScriptConfig = GSScriptConfig.new()
+var actions: GSScriptActions = GSScriptActions.new()
 ## Variables the document reads and writes; a game sets them too.
 var vars: Dictionary = {}
 ## Events refused because the queue was full, since the last [method load_document].
@@ -38,8 +38,8 @@ var _queue: Array = []
 
 
 ## Validates and loads a document (a Dictionary, or see [method load_text]). Success carries the rule count.
-func load_document(doc: Variant) -> DotResult:
-	var ok := DotScriptDocument.validate(doc, actions, config)
+func load_document(doc: Variant) -> GSResult:
+	var ok := GSScriptDocument.validate(doc, actions, config)
 	if not ok.ok:
 		return ok
 	_rules = (doc as Dictionary)["rules"] as Array
@@ -64,12 +64,12 @@ func load_document(doc: Variant) -> DotResult:
 	dropped = 0
 	rules_run = 0
 	_reset_flags()
-	return DotResult.success(n)
+	return GSResult.success(n)
 
 
-## Parses JSON text with [DotScriptCodec] and loads it.
-func load_text(text: String) -> DotResult:
-	var parsed := DotScriptCodec.parse(text, actions, config)
+## Parses JSON text with [GSScriptCodec] and loads it.
+func load_text(text: String) -> GSResult:
+	var parsed := GSScriptCodec.parse(text, actions, config)
 	if not parsed.ok:
 		return parsed
 	return load_document(parsed.value)
@@ -144,7 +144,7 @@ func tick() -> int:
 			while int(entry["next"]) < list.size():
 				var i := list[int(entry["next"])]
 				var rule: Dictionary = _rules[i]
-				if _enabled[i] == 0 or _cool[i] > 0.0 or not DotScriptConditions.passes(rule.get("when", []), vars, ctx):
+				if _enabled[i] == 0 or _cool[i] > 0.0 or not GSScriptConditions.passes(rule.get("when", []), vars, ctx):
 					entry["next"] = int(entry["next"]) + 1
 					continue
 				var cost := _cost[i]
@@ -187,9 +187,9 @@ func snapshot() -> Dictionary:
 
 
 ## Puts a [method snapshot] back. Ids the loaded document does not have are ignored and counted in the result.
-func restore(snap: Dictionary) -> DotResult:
+func restore(snap: Dictionary) -> GSResult:
 	if not snap.get("vars", {}) is Dictionary or not snap.get("enabled", {}) is Dictionary or not snap.get("cooldowns", {}) is Dictionary:
-		return DotResult.fail(DotError.CODE_INVALID, "a snapshot needs vars, enabled and cooldowns objects")
+		return GSResult.fail(GSError.CODE_INVALID, "a snapshot needs vars, enabled and cooldowns objects")
 	vars = (snap.get("vars", {}) as Dictionary).duplicate(true)
 	var unknown := 0
 	var on: Dictionary = snap.get("enabled", {})
@@ -207,7 +207,7 @@ func restore(snap: Dictionary) -> DotResult:
 			_cooling += 1
 		elif not _index.has(str(id)):
 			unknown += 1
-	return DotResult.success(unknown)
+	return GSResult.success(unknown)
 
 
 func _reset_flags() -> void:

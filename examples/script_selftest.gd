@@ -32,26 +32,26 @@ func _doc(rules: Array) -> Dictionary:
 
 
 func _config() -> void:
-	var c := DotScriptConfig.new()
+	var c := GSScriptConfig.new()
 	_check(c.validate().ok, "defaults validate")
 	_check(c.max_rules == 256 and c.tick_budget == 200, "shipped limits")
 	c.tick_budget = -1
 	_check(not c.validate().ok, "a negative limit is refused, 0 means unlimited")
-	var names: Array = DotScriptConfig.profile_schemas()["script"]["schema"].map(func(f: Dictionary) -> Variant: return f["name"])
+	var names: Array = GSScriptConfig.profile_schemas()["script"]["schema"].map(func(f: Dictionary) -> Variant: return f["name"])
 	_check(names.has("tick_budget") and names.has("allowed_actions") and names.size() == c.config_keys().size(), "profile schema lists every key", str(names.size()))
 	var applied := c.apply_dictionary({"max_rules": 5, "allowed_actions": ["message"]})
 	_check(applied.size() == 2 and c.max_rules == 5 and c.allowed_actions.size() == 1, "a dictionary layer sets ints and lists", str(applied))
 	_check(c.env_prefix() == "DOT_SCRIPT_" and c.cli_prefix() == "--script-", "env and command-line prefixes")
-	var r := DotScriptConfig.from_files()
-	_check(r.ok and (r.value as DotScriptConfig).describe().begins_with("script"), "from_files returns a config")
+	var r := GSScriptConfig.from_files()
+	_check(r.ok and (r.value as GSScriptConfig).describe().begins_with("script"), "from_files returns a config")
 	_sections += 1
 
 
 func _whitelist() -> void:
-	var a := DotScriptActions.new()
-	var c := DotScriptConfig.new()
+	var a := GSScriptActions.new()
+	var c := GSScriptConfig.new()
 	_check(a.check({"action": "message", "text": "hi"}, c).ok, "a whitelisted action with typed arguments passes")
-	_check(a.check({"action": "eval", "text": "1+1"}, c).error.code == DotError.CODE_FORBIDDEN, "an id outside the table is forbidden")
+	_check(a.check({"action": "eval", "text": "1+1"}, c).error.code == GSError.CODE_FORBIDDEN, "an id outside the table is forbidden")
 	_check(not a.check({"action": "message", "text": 5}, c).ok, "a wrong argument type is refused")
 	_check(not a.check({"action": "message", "text": "x", "extra": 1}, c).ok, "an extra argument is refused")
 	_check(not a.check({"action": "set_var", "name": "a"}, c).ok, "a missing argument is refused")
@@ -70,34 +70,34 @@ func _whitelist() -> void:
 
 
 func _document() -> void:
-	var a := DotScriptActions.new()
-	var c := DotScriptConfig.new()
+	var a := GSScriptActions.new()
+	var c := GSScriptConfig.new()
 	var ok := _doc([{"id": "a", "on": "go", "do": [{"action": "message", "text": "x"}]}])
-	_check(DotScriptDocument.validate(ok, a, c).ok, "a minimal document passes")
-	_check(not DotScriptDocument.validate([], a, c).ok, "a list is not a document")
-	_check(not DotScriptDocument.validate({"version": 2, "rules": []}, a, c).ok, "another version is refused")
+	_check(GSScriptDocument.validate(ok, a, c).ok, "a minimal document passes")
+	_check(not GSScriptDocument.validate([], a, c).ok, "a list is not a document")
+	_check(not GSScriptDocument.validate({"version": 2, "rules": []}, a, c).ok, "another version is refused")
 	var bad := _doc([{"id": "a", "on": "go", "do": []}, {"id": "a", "on": "", "do": [{"action": "nope"}], "x": 1}])
-	var r := DotScriptDocument.validate(bad, a, c)
+	var r := GSScriptDocument.validate(bad, a, c)
 	_check(not r.ok and r.error.message.split("\n").size() >= 4, "every problem is listed, not just the first", r.error.message if not r.ok else "")
-	_check(not DotScriptDocument.validate(_doc([{"id": "a", "on": "e", "when": [{"var": "v", "op": "=~", "value": 1}], "do": [{"action": "message", "text": "x"}]}]), a, c).ok, "an unknown comparison operator is refused")
-	_check(not DotScriptDocument.validate(_doc([{"id": "a", "on": "e", "do": [{"action": "enable_rule", "rule": "ghost"}]}]), a, c).ok, "enable_rule must name a rule that exists")
+	_check(not GSScriptDocument.validate(_doc([{"id": "a", "on": "e", "when": [{"var": "v", "op": "=~", "value": 1}], "do": [{"action": "message", "text": "x"}]}]), a, c).ok, "an unknown comparison operator is refused")
+	_check(not GSScriptDocument.validate(_doc([{"id": "a", "on": "e", "do": [{"action": "enable_rule", "rule": "ghost"}]}]), a, c).ok, "enable_rule must name a rule that exists")
 	c.max_rules = 1
 	var two := _doc([{"id": "a", "on": "e", "do": [{"action": "message", "text": "x"}]}, {"id": "b", "on": "e", "do": [{"action": "message", "text": "x"}]}])
-	_check(not DotScriptDocument.validate(two, a, c).ok, "max_rules is enforced")
+	_check(not GSScriptDocument.validate(two, a, c).ok, "max_rules is enforced")
 	c.max_rules = 0
-	_check(DotScriptDocument.validate(two, a, c).ok, "max_rules 0 is unlimited")
+	_check(GSScriptDocument.validate(two, a, c).ok, "max_rules 0 is unlimited")
 	c.tick_budget = 1
-	_check(not DotScriptDocument.validate(_doc([{"id": "a", "on": "e", "do": [{"action": "emit", "event": "e"}]}]), a, c).ok, "a rule dearer than the whole budget is refused at load")
+	_check(not GSScriptDocument.validate(_doc([{"id": "a", "on": "e", "do": [{"action": "emit", "event": "e"}]}]), a, c).ok, "a rule dearer than the whole budget is refused at load")
 	c.tick_budget = 200
 	c.max_actions_per_rule = 1
-	_check(not DotScriptDocument.validate(_doc([{"id": "a", "on": "e", "do": [{"action": "message", "text": "1"}, {"action": "message", "text": "2"}]}]), a, c).ok, "max_actions_per_rule is enforced")
+	_check(not GSScriptDocument.validate(_doc([{"id": "a", "on": "e", "do": [{"action": "message", "text": "1"}, {"action": "message", "text": "2"}]}]), a, c).ok, "max_actions_per_rule is enforced")
 	var parsed: Variant = JSON.parse_string(JSON.stringify(ok))
-	_check(DotScriptDocument.validate(parsed, a, DotScriptConfig.new()).ok, "a JSON round trip still validates")
+	_check(GSScriptDocument.validate(parsed, a, GSScriptConfig.new()).ok, "a JSON round trip still validates")
 	_sections += 1
 
 
 func _runner() -> void:
-	var run := DotScriptRunner.new()
+	var run := GSScriptRunner.new()
 	var said: Array = []
 	run.message.connect(func(t: String, _id: String) -> void: said.append(t))
 	var r := run.load_document(_doc([
@@ -117,7 +117,7 @@ func _runner() -> void:
 	run.fire("use")
 	run.tick()
 	_check(said.size() == 2 and not run.rule_enabled("open"), "a once rule runs once")
-	var chain := DotScriptRunner.new()
+	var chain := GSScriptRunner.new()
 	var order: Array = []
 	chain.message.connect(func(t: String, _id: String) -> void: order.append(t))
 	chain.load_document(_doc([
@@ -129,13 +129,13 @@ func _runner() -> void:
 	_check(order == ["a"] and chain.queued() == 1, "an emitted event waits for the next tick")
 	chain.tick()
 	_check(order == ["a", "b"] and chain.queued() == 0, "and runs on it")
-	var loop := DotScriptRunner.new()
+	var loop := GSScriptRunner.new()
 	loop.load_document(_doc([{"id": "l", "on": "x", "do": [{"action": "emit", "event": "x"}]}]))
 	loop.fire("x")
 	for i in 50:
 		loop.tick()
 	_check(loop.queued() == 1, "a rule that emits its own event costs a tick per round and never hangs")
-	var b := DotScriptRunner.new()
+	var b := GSScriptRunner.new()
 	b.config.tick_budget = 3
 	var n: Array = [0]
 	b.message.connect(func(_t: String, _id: String) -> void: n[0] += 1)
@@ -158,7 +158,7 @@ func _runner() -> void:
 	_check(b.fire("e") and b.fire("e") and not b.fire("e") and b.dropped == 1 and refused.size() == 1, "a full queue refuses loudly and counts", str(refused))
 	b.config.enabled = false
 	_check(not b.fire("e"), "a disabled runner refuses events")
-	var custom := DotScriptRunner.new()
+	var custom := GSScriptRunner.new()
 	var got: Array = []
 	custom.actions.register("open_door", {"door": "string"}, 2, func(args: Dictionary, ctx: Dictionary) -> void: got.append([args["door"], ctx.get("who")]))
 	custom.load_document(_doc([{"id": "d", "on": "e", "do": [{"action": "open_door", "door": "front"}]}]))
@@ -185,7 +185,7 @@ func _sandbox() -> void:
 						bad += 1
 						print("  banned text ", banned, " in ", f)
 	_check(files >= 4 and bad == 0, "no source in the addon builds or runs code from a string", "%d files, %d hits" % [files, bad])
-	var run := DotScriptRunner.new()
+	var run := GSScriptRunner.new()
 	var r := run.load_document({"version": 1, "rules": [{"id": "x", "on": "e", "when": [{"var": "a", "op": "==", "value": 1}], "do": [{"action": "message", "text": "OS.shell_open('x')"}]}]})
 	var said: Array = []
 	run.message.connect(func(t: String, _id: String) -> void: said.append(t))
@@ -197,7 +197,7 @@ func _sandbox() -> void:
 
 
 func _features() -> void:
-	var run := DotScriptRunner.new()
+	var run := GSScriptRunner.new()
 	var log: Array = []
 	run.message.connect(func(t: String, _id: String) -> void: log.append(t))
 	var ran: Array = []
@@ -231,7 +231,7 @@ func _features() -> void:
 	run.fire("hit", {"team": "red"})
 	run.tick()
 	var snap := run.snapshot()
-	var other := DotScriptRunner.new()
+	var other := GSScriptRunner.new()
 	other.load_document(_doc([
 		{"id": "hit", "on": "hit", "do": [{"action": "message", "text": "x"}], "cooldown": 2.0},
 		{"id": "flip", "on": "flip", "do": [{"action": "message", "text": "x"}]},
@@ -245,7 +245,7 @@ func _features() -> void:
 	_check(not other.rule_enabled("off") and other.cooldown_left("hit") == 0.0 and other.vars.has("lamp"), "reset returns flags to the document and keeps variables")
 	other.reset(true)
 	_check(other.vars.is_empty(), "reset(true) clears variables too")
-	var cap := DotScriptRunner.new()
+	var cap := GSScriptRunner.new()
 	cap.config.max_vars = 1
 	var why: Array = []
 	cap.refused.connect(func(_e: String, w: String) -> void: why.append(w))
@@ -253,18 +253,18 @@ func _features() -> void:
 	cap.fire("e")
 	cap.tick()
 	_check(cap.vars.size() == 1 and cap.vars["a"] == 2.0 and why.size() == 1, "max_vars refuses a new variable loudly and still lets existing ones change", str(why))
-	var c := DotScriptConfig.new()
-	var acts := DotScriptActions.new()
-	var good := DotScriptCodec.parse('{"version": 1, "rules": [{"id": "a", "on": "e", "do": [{"action": "message", "text": "hi"}]}]}', acts, c)
-	_check(good.ok and DotScriptCodec.parse(DotScriptCodec.stringify(good.value), acts, c).ok, "the codec parses JSON and round-trips")
-	_check(DotScriptCodec.parse("{nope", acts, c).error.code == DotError.CODE_PARSE, "bad JSON is a parse error")
+	var c := GSScriptConfig.new()
+	var acts := GSScriptActions.new()
+	var good := GSScriptCodec.parse('{"version": 1, "rules": [{"id": "a", "on": "e", "do": [{"action": "message", "text": "hi"}]}]}', acts, c)
+	_check(good.ok and GSScriptCodec.parse(GSScriptCodec.stringify(good.value), acts, c).ok, "the codec parses JSON and round-trips")
+	_check(GSScriptCodec.parse("{nope", acts, c).error.code == GSError.CODE_PARSE, "bad JSON is a parse error")
 	c.max_document_bytes = 10
-	_check(not DotScriptCodec.parse('{"version": 1, "rules": []}', acts, c).ok, "max_document_bytes refuses before parsing")
+	_check(not GSScriptCodec.parse('{"version": 1, "rules": []}', acts, c).ok, "max_document_bytes refuses before parsing")
 	c.max_document_bytes = 0
-	_check(DotScriptCodec.parse('{"version": 1, "rules": []}', acts, c).ok, "max_document_bytes 0 is unlimited")
-	_check(run.load_text("not json").error.code == DotError.CODE_PARSE and run.load_text('{"version": 1, "rules": []}').ok, "load_text goes through the codec")
+	_check(GSScriptCodec.parse('{"version": 1, "rules": []}', acts, c).ok, "max_document_bytes 0 is unlimited")
+	_check(run.load_text("not json").error.code == GSError.CODE_PARSE and run.load_text('{"version": 1, "rules": []}').ok, "load_text goes through the codec")
 	_check(acts.ids().has("toggle_var") and acts.ids()[0] <= acts.ids()[1] and acts.describe()[0].contains("cost"), "actions list their ids and signatures")
-	_check(DotScriptConditions.compare("a", "==", "a") and not DotScriptConditions.compare("a", "<", "b") and not DotScriptConditions.compare(1, "==", "1") and DotScriptConditions.compare(2, ">=", 2.0), "compare: strings only equal, numbers ordered, no coercion")
+	_check(GSScriptConditions.compare("a", "==", "a") and not GSScriptConditions.compare("a", "<", "b") and not GSScriptConditions.compare(1, "==", "1") and GSScriptConditions.compare(2, ">=", 2.0), "compare: strings only equal, numbers ordered, no coercion")
 	_sections += 1
 
 

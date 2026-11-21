@@ -1,4 +1,4 @@
-class_name DotScriptDocument
+class_name GSScriptDocument
 extends RefCounted
 
 ## The script document: a Dictionary (JSON on disk or on the wire) of rules. Validation is the only
@@ -8,7 +8,7 @@ extends RefCounted
 ##     {"id": "open", "on": "button.pressed", "when": [{"var": "keys", "op": ">=", "value": 2}],
 ##      "do": [{"action": "message", "text": "Door open"}], "once": true, "cooldown": 5.0}]}
 ##
-## `cooldown` is seconds a rule stays quiet after it runs; a runner counts it down in [method DotScriptRunner.advance].
+## `cooldown` is seconds a rule stays quiet after it runs; a runner counts it down in [method GSScriptRunner.advance].
 
 const VERSION := 1
 const OPS := ["==", "!=", "<", "<=", ">", ">="]
@@ -17,17 +17,17 @@ const ID_PATTERN := "^[A-Za-z0-9_.-]{1,64}$"
 
 
 ## Success carries the document; failure lists every problem, one per line.
-static func validate(doc: Variant, actions: DotScriptActions, cfg: DotScriptConfig) -> DotResult:
+static func validate(doc: Variant, actions: GSScriptActions, cfg: GSScriptConfig) -> GSResult:
 	var errs := PackedStringArray()
 	if not doc is Dictionary:
-		return DotResult.fail(DotError.CODE_PARSE, "a script document must be an object")
+		return GSResult.fail(GSError.CODE_PARSE, "a script document must be an object")
 	var d: Dictionary = doc
 	if int(d.get("version", 0)) != VERSION:
 		errs.append("version must be %d" % VERSION)
 	var rules: Variant = d.get("rules")
 	if not rules is Array:
 		errs.append("rules must be a list")
-		return DotResult.fail(DotError.CODE_INVALID, "\n".join(errs))
+		return GSResult.fail(GSError.CODE_INVALID, "\n".join(errs))
 	var list: Array = rules
 	if cfg != null and cfg.max_rules > 0 and list.size() > cfg.max_rules:
 		errs.append("%d rules is over max_rules %d" % [list.size(), cfg.max_rules])
@@ -41,11 +41,11 @@ static func validate(doc: Variant, actions: DotScriptActions, cfg: DotScriptConf
 	for i in list.size():
 		errs.append_array(_rule(list[i], i, actions, cfg, ids, seen, re))
 	if not errs.is_empty():
-		return DotResult.fail(DotError.CODE_INVALID, "\n".join(errs))
-	return DotResult.success(d)
+		return GSResult.fail(GSError.CODE_INVALID, "\n".join(errs))
+	return GSResult.success(d)
 
 
-static func _rule(r: Variant, i: int, actions: DotScriptActions, cfg: DotScriptConfig, ids: Dictionary, seen: Dictionary, re: RegEx) -> PackedStringArray:
+static func _rule(r: Variant, i: int, actions: GSScriptActions, cfg: GSScriptConfig, ids: Dictionary, seen: Dictionary, re: RegEx) -> PackedStringArray:
 	var errs := PackedStringArray()
 	var at := "rule %d" % i
 	if not r is Dictionary:

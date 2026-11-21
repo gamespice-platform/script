@@ -3,7 +3,7 @@ extends Node
 
 
 func _ready() -> void:
-	var run := DotScriptRunner.new()
+	var run := GSScriptRunner.new()
 	run.message.connect(func(text: String, rule: String) -> void: print("[%s] %s" % [rule, text]))
 	var r := run.load_text('{"version":1,"rules":[{"id":"pick","on":"pickup","do":[{"action":"add_var","name":"keys","amount":1}]},{"id":"open","on":"use","when":[{"var":"keys","op":">=","value":1}],"do":[{"action":"message","text":"vault open"}],"cooldown":5}]}')
 	if not r.ok:
