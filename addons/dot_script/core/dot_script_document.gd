@@ -6,11 +6,13 @@ extends RefCounted
 ##
 ##   {"version": 1, "rules": [
 ##     {"id": "open", "on": "button.pressed", "when": [{"var": "keys", "op": ">=", "value": 2}],
-##      "do": [{"action": "message", "text": "Door open"}], "once": true}]}
+##      "do": [{"action": "message", "text": "Door open"}], "once": true, "cooldown": 5.0}]}
+##
+## `cooldown` is seconds a rule stays quiet after it runs; a runner counts it down in [method DotScriptRunner.advance].
 
 const VERSION := 1
 const OPS := ["==", "!=", "<", "<=", ">", ">="]
-const RULE_KEYS := ["id", "on", "when", "do", "once", "enabled"]
+const RULE_KEYS := ["id", "on", "when", "do", "once", "enabled", "cooldown"]
 const ID_PATTERN := "^[A-Za-z0-9_.-]{1,64}$"
 
 
@@ -66,6 +68,8 @@ static func _rule(r: Variant, i: int, actions: DotScriptActions, cfg: DotScriptC
 	for key in ["once", "enabled"]:
 		if d.has(key) and not d[key] is bool:
 			errs.append("%s: '%s' must be true or false" % [at, key])
+	if d.has("cooldown") and not ((d["cooldown"] is int or d["cooldown"] is float) and float(d["cooldown"]) >= 0.0):
+		errs.append("%s: 'cooldown' must be a number of seconds, 0 or more" % at)
 	var when: Variant = d.get("when", [])
 	if not when is Array:
 		errs.append("%s: 'when' must be a list" % at)

@@ -13,6 +13,8 @@ const ADDON := "dot-script"
 @export_range(0, 100000, 1) var max_rules: int = 256
 ## The most actions one rule may run. 0 is unlimited.
 @export_range(0, 1000, 1) var max_actions_per_rule: int = 16
+## The largest script text, in bytes, that [method DotScriptCodec.parse] accepts. 0 is unlimited.
+@export_range(0, 100000000, 1) var max_document_bytes: int = 262144
 ## The longest text argument, in characters. 0 is unlimited.
 @export_range(0, 100000, 1) var max_text_length: int = 200
 
@@ -21,6 +23,9 @@ const ADDON := "dot-script"
 @export_range(0, 1000000, 1) var tick_budget: int = 200
 ## The most events waiting at once; an event past it is refused and counted. 0 is unlimited.
 @export_range(0, 1000000, 1) var max_queued_events: int = 1024
+
+## The most distinct variables a runner holds; a rule that would create one past it is refused and skipped. 0 is unlimited.
+@export_range(0, 1000000, 1) var max_vars: int = 4096
 
 @export_group("Actions")
 ## Action ids a document may use; empty allows every registered action.
@@ -35,14 +40,14 @@ func cli_prefix() -> String:
 
 
 func validate() -> DotResult:
-	for k in ["max_rules", "max_actions_per_rule", "max_text_length", "tick_budget", "max_queued_events"]:
+	for k in ["max_rules", "max_actions_per_rule", "max_text_length", "max_document_bytes", "tick_budget", "max_queued_events", "max_vars"]:
 		if int(get(k)) < 0:
 			return DotResult.fail(DotError.CODE_INVALID, "script %s must be 0 (unlimited) or more, got %d" % [k, int(get(k))])
 	return DotResult.success(self)
 
 func describe() -> String:
-	return "script %s rules<=%d actions<=%d budget %d queue<=%d allow %d" % [
-		"on" if enabled else "disabled", max_rules, max_actions_per_rule, tick_budget, max_queued_events, allowed_actions.size()]
+	return "script %s rules<=%d actions<=%d bytes<=%d budget %d queue<=%d vars<=%d allow %d" % [
+		"on" if enabled else "disabled", max_rules, max_actions_per_rule, max_document_bytes, tick_budget, max_queued_events, max_vars, allowed_actions.size()]
 
 
 ## The `script` profile schema (the shape of GameSpice Profile's field()), read from the exports so it cannot drift; GameSpice Profile's profile_check finds it here.

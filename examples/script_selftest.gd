@@ -4,8 +4,8 @@ extends Node
 ## Counts sections run to their last line as well as checks, because a script error
 ## aborts a section and not the run.
 
-const EXPECTED_SECTIONS := 5
-const EXPECTED_CHECKS := 49
+const EXPECTED_SECTIONS := 6
+const EXPECTED_CHECKS := 68
 
 var _passed := 0
 var _failed := 0
@@ -19,6 +19,7 @@ func _ready() -> void:
 	_document()
 	_runner()
 	_sandbox()
+	_features()
 	print("")
 	_check(_sections == EXPECTED_SECTIONS, "every section ran to its last line (%d of %d)" % [_sections, EXPECTED_SECTIONS])
 	_check(_passed + _failed == EXPECTED_CHECKS, "and the suite ran all %d of its checks (%d)" % [EXPECTED_CHECKS, _passed + _failed])
@@ -142,7 +143,7 @@ func _runner() -> void:
 	for i in 7:
 		b.fire("e")
 	var s1 := b.tick()
-	_check(s1["ran"] == 3 and s1["spent"] == 3 and s1["waiting"] == 4 and n[0] == 3, "the tick budget caps what runs and the rest waits", str(s1))
+	_check(s1 == 3 and b.last_spent == 3 and b.last_waiting == 4 and n[0] == 3, "the tick budget caps what runs and the rest waits", "%d %d %d" % [s1, b.last_spent, b.last_waiting])
 	b.tick()
 	b.tick()
 	_check(n[0] == 7 and b.queued() == 0, "waiting events run in order on later ticks", str(n))
@@ -192,6 +193,78 @@ func _sandbox() -> void:
 	run.fire("e")
 	run.tick()
 	_check(r.ok and said == ["OS.shell_open('x')"], "text that looks like code is only ever text")
+	_sections += 1
+
+
+func _features() -> void:
+	var run := DotScriptRunner.new()
+	var log: Array = []
+	run.message.connect(func(t: String, _id: String) -> void: log.append(t))
+	var ran: Array = []
+	run.rule_ran.connect(func(id: String, ev: String) -> void: ran.append(id + "@" + ev))
+	var r := run.load_document(_doc([
+		{"id": "hit", "on": "hit", "when": [{"var": "ctx.team", "op": "==", "value": "red"}], "do": [{"action": "message", "text": "red hit"}], "cooldown": 2.0},
+		{"id": "flip", "on": "flip", "do": [{"action": "toggle_var", "name": "lamp"}]},
+		{"id": "off", "on": "x", "enabled": false, "do": [{"action": "message", "text": "off"}]},
+	]))
+	_check(r.ok, "a document with cooldown, ctx and a disabled rule loads")
+	run.fire("hit", {"team": "blue"})
+	run.tick()
+	_check(log.is_empty(), "a ctx. condition reads the event context")
+	run.fire("hit", {"team": "red"})
+	run.tick()
+	run.fire("hit", {"team": "red"})
+	run.tick()
+	_check(log == ["red hit"] and run.cooldown_left("hit") == 2.0 and ran == ["hit@hit"], "a cooldown keeps a rule quiet and rule_ran reports it", str(log))
+	run.advance(1.5)
+	run.advance(0.6)
+	run.fire("hit", {"team": "red"})
+	run.tick()
+	_check(log.size() == 2 and run.rules_run == 2, "after the cooldown it runs again", str(log))
+	run.fire("flip")
+	run.tick()
+	_check(run.vars["lamp"] == 1.0, "toggle_var turns a variable on")
+	run.fire("flip")
+	run.tick()
+	_check(run.vars["lamp"] == 0.0, "and off again")
+	_check(not run.rule_enabled("off") and run.set_rule_enabled("off", true) and run.rule_enabled("off") and not run.set_rule_enabled("ghost", true), "rules switch on and off by id, unknown ids say so")
+	run.fire("hit", {"team": "red"})
+	run.tick()
+	var snap := run.snapshot()
+	var other := DotScriptRunner.new()
+	other.load_document(_doc([
+		{"id": "hit", "on": "hit", "do": [{"action": "message", "text": "x"}], "cooldown": 2.0},
+		{"id": "flip", "on": "flip", "do": [{"action": "message", "text": "x"}]},
+		{"id": "off", "on": "x", "enabled": false, "do": [{"action": "message", "text": "x"}]},
+	]))
+	snap["enabled"]["gone"] = true
+	var rr := other.restore(JSON.parse_string(JSON.stringify(snap)))
+	_check(rr.ok and rr.value == 1 and other.vars["lamp"] == 0.0 and other.rule_enabled("off") and other.cooldown_left("hit") == 2.0, "a snapshot survives JSON and restores state, counting unknown ids", str(rr.value))
+	_check(not other.restore({"vars": 1}).ok, "a malformed snapshot is refused")
+	other.reset()
+	_check(not other.rule_enabled("off") and other.cooldown_left("hit") == 0.0 and other.vars.has("lamp"), "reset returns flags to the document and keeps variables")
+	other.reset(true)
+	_check(other.vars.is_empty(), "reset(true) clears variables too")
+	var cap := DotScriptRunner.new()
+	cap.config.max_vars = 1
+	var why: Array = []
+	cap.refused.connect(func(_e: String, w: String) -> void: why.append(w))
+	cap.load_document(_doc([{"id": "v", "on": "e", "do": [{"action": "set_var", "name": "a", "value": 1}, {"action": "set_var", "name": "b", "value": 1}, {"action": "add_var", "name": "a", "amount": 1}]}]))
+	cap.fire("e")
+	cap.tick()
+	_check(cap.vars.size() == 1 and cap.vars["a"] == 2.0 and why.size() == 1, "max_vars refuses a new variable loudly and still lets existing ones change", str(why))
+	var c := DotScriptConfig.new()
+	var acts := DotScriptActions.new()
+	var good := DotScriptCodec.parse('{"version": 1, "rules": [{"id": "a", "on": "e", "do": [{"action": "message", "text": "hi"}]}]}', acts, c)
+	_check(good.ok and DotScriptCodec.parse(DotScriptCodec.stringify(good.value), acts, c).ok, "the codec parses JSON and round-trips")
+	_check(DotScriptCodec.parse("{nope", acts, c).error.code == DotError.CODE_PARSE, "bad JSON is a parse error")
+	c.max_document_bytes = 10
+	_check(not DotScriptCodec.parse('{"version": 1, "rules": []}', acts, c).ok, "max_document_bytes refuses before parsing")
+	c.max_document_bytes = 0
+	_check(DotScriptCodec.parse('{"version": 1, "rules": []}', acts, c).ok, "max_document_bytes 0 is unlimited")
+	_check(run.load_text("not json").error.code == DotError.CODE_PARSE and run.load_text('{"version": 1, "rules": []}').ok, "load_text goes through the codec")
+	_check(acts.ids().has("toggle_var") and acts.ids()[0] <= acts.ids()[1] and acts.describe()[0].contains("cost"), "actions list their ids and signatures")
+	_check(DotScriptConditions.compare("a", "==", "a") and not DotScriptConditions.compare("a", "<", "b") and not DotScriptConditions.compare(1, "==", "1") and DotScriptConditions.compare(2, ">=", 2.0), "compare: strings only equal, numbers ordered, no coercion")
 	_sections += 1
 
 

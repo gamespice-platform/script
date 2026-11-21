@@ -20,6 +20,7 @@ func _init() -> void:
 		"message": {"args": {"text": T_STRING}, "cost": 1},
 		"set_var": {"args": {"name": T_STRING, "value": T_NUMBER}, "cost": 1},
 		"add_var": {"args": {"name": T_STRING, "amount": T_NUMBER}, "cost": 1},
+		"toggle_var": {"args": {"name": T_STRING}, "cost": 1},
 		"enable_rule": {"args": {"rule": T_STRING}, "cost": 1},
 		"disable_rule": {"args": {"rule": T_STRING}, "cost": 1},
 		"emit": {"args": {"event": T_STRING}, "cost": 2},
@@ -41,6 +42,25 @@ func register(id: String, args: Dictionary, cost: int, handler: Callable) -> Dot
 			return DotResult.fail(DotError.CODE_INVALID, "action '%s' argument '%s' has unknown type '%s'" % [id, a, args[a]])
 	specs[id] = {"args": args.duplicate(), "cost": cost, "handler": handler}
 	return DotResult.success(id)
+
+
+## Every action id, sorted; for an editor's palette or a document's reference.
+func ids() -> PackedStringArray:
+	var out := PackedStringArray(specs.keys())
+	out.sort()
+	return out
+
+
+## One line per action: `id(arg: type, ...) cost N`, sorted. For docs and error messages.
+func describe() -> PackedStringArray:
+	var out := PackedStringArray()
+	for id in ids():
+		var args: Dictionary = (specs[id] as Dictionary)["args"]
+		var parts := PackedStringArray()
+		for a: String in args:
+			parts.append("%s: %s" % [a, args[a]])
+		out.append("%s(%s) cost %d" % [id, ", ".join(parts), cost_of(id)])
+	return out
 
 
 func has(id: String) -> bool:

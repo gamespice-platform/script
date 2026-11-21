@@ -31,6 +31,16 @@ run.fire("use")                                    # from the game's own events
 run.tick()                                         # in _physics_process: runs what the budget allows
 ```
 
+## What a document can say
+
+- **Conditions.** `when` is a list of `{var, op, value}`; all must hold. `ctx.<key>` reads the event's context (who fired it) instead of a variable. Operators are `== != < <= > >=`.
+- **Cooldowns and once.** `cooldown` (seconds, counted down by `advance(dt)`) and `once` keep a rule quiet.
+- **Actions.** `message`, `set_var`, `add_var`, `toggle_var`, `enable_rule`, `disable_rule`, `emit`, plus whatever the game registers.
+- **Saves.** `snapshot()` and `restore()` carry variables, which rules are on and running cooldowns.
+- **Text.** `load_text()` parses JSON with a size limit; `DotScriptCodec.stringify()` writes it back. Text that looks like code is only ever text.
+
+See [docs/format.md](docs/format.md) for the full format and `examples/script_demo.gd` for a runnable walk-through.
+
 ## Settings
 
 Every number is a field on `DotScriptConfig`. The values below are defaults, and the ranges are inspector slider limits, not enforced caps. Set the property from code or a config file to go beyond them; 0 means unlimited where it says so.
@@ -40,9 +50,11 @@ Every number is a field on `DotScriptConfig`. The values below are defaults, and
 | `enabled` | true | Turns scripting on or off. Off, no event runs. |
 | `max_rules` | 256 | Most rules in one document. 0 is unlimited. |
 | `max_actions_per_rule` | 16 | Most actions in one rule. 0 is unlimited. |
+| `max_document_bytes` | 262144 | Largest JSON text `load_text()` accepts. 0 is unlimited. |
 | `max_text_length` | 200 | Longest text an action may carry. 0 is unlimited. |
 | `tick_budget` | 200 | Cost one `tick()` may spend; the rest waits for the next tick. 0 is unlimited. |
 | `max_queued_events` | 1024 | Events that may wait. Past it, `fire()` returns false. 0 is unlimited. |
+| `max_vars` | 4096 | Most variables a script may create; past it the action is refused. 0 is unlimited. |
 | `allowed_actions` | empty | If set, only these action ids may be used; empty allows every registered action. |
 
 Layers, weakest first: the defaults, `cfg/addon/dot_script/*.yml`, the game's files, the operator's files, `DOT_SCRIPT_*` environment variables, then `--script-*` flags. A game that wants cvars binds the config with GameSpice Game's `DotGameConfigBinder` (`profile_kind = "script"`).
@@ -64,7 +76,7 @@ godot --headless --path . --import
 godot --headless --path . res://examples/script_selftest.tscn
 ```
 
-The self-test is offline and exits non-zero on any failure (5 sections, 49 checks plus the two summary checks).
+The self-test is offline and exits non-zero on any failure (68 checks plus the two summary checks).
 
 ## Status
 
