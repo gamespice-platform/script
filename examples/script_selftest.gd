@@ -1,6 +1,6 @@
 extends Node
 
-## dot-script's headless suite (res://examples/script_selftest.tscn).
+## gs-script's headless suite (res://examples/script_selftest.tscn).
 ## Counts sections run to their last line as well as checks, because a script error
 ## aborts a section and not the run.
 
@@ -13,7 +13,7 @@ var _sections := 0
 
 
 func _ready() -> void:
-	print("dot-script")
+	print("gs-script")
 	_config()
 	_whitelist()
 	_document()
@@ -41,7 +41,7 @@ func _config() -> void:
 	_check(names.has("tick_budget") and names.has("allowed_actions") and names.size() == c.config_keys().size(), "profile schema lists every key", str(names.size()))
 	var applied := c.apply_dictionary({"max_rules": 5, "allowed_actions": ["message"]})
 	_check(applied.size() == 2 and c.max_rules == 5 and c.allowed_actions.size() == 1, "a dictionary layer sets ints and lists", str(applied))
-	_check(c.env_prefix() == "DOT_SCRIPT_" and c.cli_prefix() == "--script-", "env and command-line prefixes")
+	_check(c.env_prefix() == "GS_SCRIPT_" and c.cli_prefix() == "--script-", "env and command-line prefixes")
 	var r := GSScriptConfig.from_files()
 	_check(r.ok and (r.value as GSScriptConfig).describe().begins_with("script"), "from_files returns a config")
 	_sections += 1
@@ -175,7 +175,7 @@ func _runner() -> void:
 func _sandbox() -> void:
 	var bad := 0
 	var files := 0
-	for dir in ["res://addons/dot_script/core", "res://addons/dot_script/runtime"]:
+	for dir in ["res://addons/gs_script/core", "res://addons/gs_script/runtime"]:
 		for f in DirAccess.get_files_at(dir):
 			if f.ends_with(".gd"):
 				files += 1

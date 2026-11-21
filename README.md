@@ -6,7 +6,7 @@ A community server wants its players to script a map or a mode without handing t
 
 ## Install
 
-1. Copy `addons/dot_script/` and `addons/dot_core/` into your project.
+1. Copy `addons/gs_script/` and `addons/gs_core/` into your project.
 2. Enable GameSpice Script in *Project > Project Settings > Plugins*.
 
 ## Quick start
@@ -57,7 +57,7 @@ Every number is a field on `GSScriptConfig`. The values below are defaults, and 
 | `max_vars` | 4096 | Most variables a script may create; past it the action is refused. 0 is unlimited. |
 | `allowed_actions` | empty | If set, only these action ids may be used; empty allows every registered action. |
 
-Layers, weakest first: the defaults, `cfg/addon/dot_script/*.yml`, the game's files, the operator's files, `DOT_SCRIPT_*` environment variables, then `--script-*` flags. A game that wants cvars binds the config with GameSpice Game's `GSGameConfigBinder` (`profile_kind = "script"`).
+Layers, weakest first: the defaults, `cfg/addon/gs_script/*.yml`, the game's files, the operator's files, `GS_SCRIPT_*` environment variables, then `--script-*` flags. A game that wants cvars binds the config with GameSpice Game's `GSGameConfigBinder` (`profile_kind = "script"`).
 
 ## What it is not
 

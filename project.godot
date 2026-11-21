@@ -3,7 +3,7 @@ config_version=5
 
 [application]
 
-config/name="dot-script"
+config/name="gs-script"
 config/description="Sandboxed, data-driven scripting for community servers: triggers, conditions and a whitelist of actions in a document, with a per-tick cost budget and no arbitrary code."
 run/main_scene="res://examples/script_selftest.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
@@ -11,7 +11,7 @@ config/icon="res://icon.svg"
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/dot_script/plugin.cfg")
+enabled=PackedStringArray("res://addons/gs_script/plugin.cfg")
 
 [rendering]
 

@@ -1,9 +1,9 @@
 class_name GSScriptConfig
 extends GSConfig
 
-## Every tunable of Script. Layered like any config: defaults, `cfg/addon/dot_script/*.yml`, the game tier, `DOT_SCRIPT_*` environment, then `--script-*` flags. A value of 0 on a limit means unlimited.
+## Every tunable of Script. Layered like any config: defaults, `cfg/addon/gs_script/*.yml`, the game tier, `GS_SCRIPT_*` environment, then `--script-*` flags. A value of 0 on a limit means unlimited.
 
-const ADDON := "dot-script"
+const ADDON := "gs-script"
 
 ## Master switch: off, a runner accepts no events and runs nothing.
 @export var enabled: bool = true
@@ -32,7 +32,7 @@ const ADDON := "dot-script"
 @export var allowed_actions: PackedStringArray = PackedStringArray()
 
 func env_prefix() -> String:
-	return "DOT_SCRIPT_"
+	return "GS_SCRIPT_"
 
 
 func cli_prefix() -> String:
@@ -82,7 +82,7 @@ static func profile_schemas() -> Dictionary:
 	return {"script": {"schema": schema(), "children": {}}}
 
 
-## Defaults, then `cfg/addon/dot_script/*.yml` and the game tier, then environment and command line.
+## Defaults, then `cfg/addon/gs_script/*.yml` and the game tier, then environment and command line.
 static func from_files() -> GSResult:
 	var cfg := GSScriptConfig.new()
 	var files := GSAddonConfig.load_dir(ADDON)
